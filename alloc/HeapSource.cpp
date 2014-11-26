@@ -160,6 +160,9 @@ struct HeapSource {
      */
     Heap heaps[HEAP_SOURCE_MAX_HEAP_COUNT];
 
+    //增加UiThreadHeap
+    Heap UiThreadHeap;
+
     /* The current number of heaps.
      */
     size_t numHeaps;
@@ -387,6 +390,31 @@ static bool addInitialHeap(HeapSource *hs, mspace msp, size_t maximumSize)
     hs->numHeaps = 1;
     return true;
 }
+/*
+ * 增加初始化UiThreadHeap
+ *
+ */
+#define UI_HEAP_SIZE    4*1024*1024    //姑且暂时设置4M大小的UI Heap
+static bool addUiThreadHeap(HeapSource *hs, char *base)
+{
+    Heap heap;
+    size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);//不明白，与下面相对
+//    heap.maximumSize = (hs->growthLimit-overhead)>>2;//所以heap[0]也得修改
+    heap.maximumSize = UI_HEAP_SIZE;//我暂时设定一个绝对的大小
+//  heap.concurrentStartBytes = hs->minFree - concurrentStart;//64K
+    heap.concurrentStartBytes = SIZE_MAX;//暂时不进行垃圾回收
+    heap.base = base;//这里面应该设置一个合适的值
+    heap.limit = heap.base + UI_HEAP_SIZE;
+    heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
+    heap.msp = createMspace(heap.base, morecoreStart, hs->minFree);
+
+    if (heap.msp == NULL) {
+        return false;
+    }
+    hs->UiThreadHeap = heap;
+
+    return true;
+}
 
 /*
  * Adds an additional heap to the heap source.  Returns false if there
@@ -425,7 +453,7 @@ static bool addNewHeap(HeapSource *hs)
         heap.maximumSize = hs->growthLimit - overhead;
         heap.concurrentStartBytes = HEAP_MIN_FREE - concurrentStart;
         heap.base = base;
-        heap.limit = heap.base + heap.maximumSize;
+        heap.limit = heap.base + heap.maximumSize - UI_HEAP_SIZE;
         heap.brk = heap.base + HEAP_MIN_FREE;
         heap.msp = createMspace(base, HEAP_MIN_FREE, hs->maximumSize - overhead);
     }
@@ -434,9 +462,9 @@ static bool addNewHeap(HeapSource *hs)
         heap.maximumSize = hs->growthLimit - overhead;
         heap.concurrentStartBytes = hs->minFree - concurrentStart;
         heap.base = base;
-        heap.limit = heap.base + heap.maximumSize;
+        heap.limit = heap.base + heap.maximumSize - UI_HEAP_SIZE;
         heap.brk = heap.base + morecoreStart;
-        heap.msp = createMspace(base, morecoreStart, hs->minFree);
+        heap.msp = createMspace(base, morecoreStart, hs->minFree);//可能这里面需要减去UiThreadHeap的大小
     }
     if (heap.msp == NULL) {
         return false;
@@ -455,6 +483,13 @@ static bool addNewHeap(HeapSource *hs)
     hs->heaps[0] = heap;
     hs->numHeaps++;
 
+    if(true == addUiThreadHeap(hs, hs->heaps[0].limit)) {//在这里调用，将UiHeap放在之间
+        ALOGE("*****wh_log*****初始化UiThreadHeap成功");
+    }
+    else {
+        ALOGE("*****wh_log*****初始化UiThreadHeap失败");
+        return false;
+    }
     return true;
 }
 
@@ -582,8 +617,8 @@ GcHeap* dvmHeapSourceStartup(size_t startSize, size_t maximumSize,
      * Allocate a contiguous region of virtual memory to subdivided
      * among the heaps managed by the garbage collector.
      */
-    length = ALIGN_UP_TO_PAGE_SIZE(maximumSize);
-    base = dvmAllocRegion(length, PROT_NONE, "dalvik-heap");
+    length = ALIGN_UP_TO_PAGE_SIZE(maximumSize);//256M
+    base = dvmAllocRegion(length, PROT_NONE, "dalvik-heap");//虽然分配了256M的内存，只考虑总共有64M的情况，256M内存是给特殊情况使用的
     if (base == NULL) {
         return NULL;
     }
