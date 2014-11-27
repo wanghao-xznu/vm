@@ -33,6 +33,7 @@
 #include <errno.h>
 
 #include <cutils/properties.h>
+#define kMainThreadId   1
 static int debugalloc()
 {
     char value[PROPERTY_VALUE_MAX];
@@ -198,7 +199,18 @@ static void *tryMalloc(size_t size)
 //    DeflateTest allocs a bunch of ~128k buffers w/in 0-5 allocs of each other
 //      (or, at least, there are only 0-5 objects swept each time)
 
-    ptr = dvmHeapSourceAlloc(size);
+    if (dvmThreadSelf()->threadId == kMainThreadId) {
+        /*
+         * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
+         * GC的情况
+         */
+        ptr = dvmHeapSourceUiThreadAlloc(size);
+    } else {
+        /*
+         *这里面是默认状态下的申请操作
+         */
+        ptr = dvmHeapSourceAlloc(size);
+    }
     if (ptr != NULL) {
         return ptr;
     }
@@ -220,7 +232,18 @@ static void *tryMalloc(size_t size)
       gcForMalloc(false);
     }
 
-    ptr = dvmHeapSourceAlloc(size);
+    if (dvmThreadSelf()->threadId == kMainThreadId) {
+        /*
+         * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
+         * GC的情况
+         */
+        ptr = dvmHeapSourceUiThreadAlloc(size);
+    } else {
+        /*
+         *这里面是默认状态下的申请操作
+         */
+        ptr = dvmHeapSourceAlloc(size);
+    }
     if (ptr != NULL) {
         return ptr;
     }
