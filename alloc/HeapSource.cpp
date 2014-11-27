@@ -394,17 +394,20 @@ static bool addInitialHeap(HeapSource *hs, mspace msp, size_t maximumSize)
  * 增加初始化UiThreadHeap
  *
  */
-#define UI_HEAP_SIZE    4*1024*1024    //姑且暂时设置4M大小的UI Heap
+#define UI_HEAP_SIZE    4*1024*1024    //姑且暂时设置4M大小的UI Heap,暂时没有使用
+                                       //我觉得这里可能不能设置绝对大小，每次dalvik启动设置的值不一样
 static bool addUiThreadHeap(HeapSource *hs, char *base)
 {
     Heap heap;
     size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);//不明白，与下面相对
+    size_t ui_heap_size = (hs->heaps[0].limit - hs->heaps[0].base)>1;
+    hs->heaps[0].limit = hs->heaps[0].limit - ui_heap_size;
 //    heap.maximumSize = (hs->growthLimit-overhead)>>2;//所以heap[0]也得修改
-    heap.maximumSize = UI_HEAP_SIZE;//我暂时设定一个绝对的大小
+    heap.maximumSize = ui_heap_size;//我暂时设定一个绝对的大小
 //  heap.concurrentStartBytes = hs->minFree - concurrentStart;//64K
     heap.concurrentStartBytes = SIZE_MAX;//暂时不进行垃圾回收
     heap.base = base;//这里面应该设置一个合适的值
-    heap.limit = heap.base + UI_HEAP_SIZE;
+    heap.limit = heap.base + ui_heap_size;
     heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
     heap.msp = createMspace(heap.base, morecoreStart, hs->minFree);
 
@@ -453,7 +456,7 @@ static bool addNewHeap(HeapSource *hs)
         heap.maximumSize = hs->growthLimit - overhead;
         heap.concurrentStartBytes = HEAP_MIN_FREE - concurrentStart;
         heap.base = base;
-        heap.limit = heap.base + heap.maximumSize - UI_HEAP_SIZE;
+        heap.limit = heap.base + heap.maximumSize;
         heap.brk = heap.base + HEAP_MIN_FREE;
         heap.msp = createMspace(base, HEAP_MIN_FREE, hs->maximumSize - overhead);
     }
@@ -462,7 +465,7 @@ static bool addNewHeap(HeapSource *hs)
         heap.maximumSize = hs->growthLimit - overhead;
         heap.concurrentStartBytes = hs->minFree - concurrentStart;
         heap.base = base;
-        heap.limit = heap.base + heap.maximumSize - UI_HEAP_SIZE;
+        heap.limit = heap.base + heap.maximumSize;
         heap.brk = heap.base + morecoreStart;
         heap.msp = createMspace(base, morecoreStart, hs->minFree);//可能这里面需要减去UiThreadHeap的大小
     }
@@ -922,6 +925,42 @@ void dvmMarkImmuneObjects(const char *immuneLimit)
             }
         }
     }
+}
+
+/*
+ * 增加对UI线程的内存分配函数
+ */
+void* dvmHeapSourceUiThreadAlloc(size_t n)
+{
+    HS_BOILERPLATE();//只是执行几个断言
+    HeapSource *hs = gHs;//gHs应该是一个全局变量
+    Heap *heap = &hs->UiThreadHeap;
+    if (heap->bytesAllocated + n > heap->maximumSize){
+        return NULL;
+    }
+    void* ptr = mspace_calloc(heap->msp,1,n);
+    if (ptr == NULL) {
+        return NULL;
+    }
+    countAllocation(heap, ptr);
+    /*
+     * Check to see if a concurrent GC should be initiated.
+     */
+    if (gDvm.gcHeap->gcRunning || !hs->hasGcThread) {
+        /*
+         * The garbage collector thread is already running or has yet
+         * to be started.  Do nothing.
+         */
+        return ptr;
+    }
+    if (heap->bytesAllocated > heap->concurrentStartBytes) {
+        /*
+         * We have exceeded the allocation threshold.  Wake up the
+         * garbage collector.
+         */
+        dvmSignalCond(&gHs->gcThreadCond);
+    }
+    return ptr;
 }
 
 /*
