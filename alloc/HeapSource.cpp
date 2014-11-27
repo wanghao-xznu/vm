@@ -28,6 +28,8 @@
 #include "alloc/HeapBitmap.h"
 #include "alloc/HeapBitmapInlines.h"
 
+#define kMainThreadId   1
+
 static void snapIdealFootprint();
 static void setIdealFootprint(size_t max);
 static size_t getMaximumSize(const HeapSource *hs);
@@ -1017,7 +1019,20 @@ static void* heapAllocAndGrow(HeapSource *hs, Heap *heap, size_t n)
     size_t max = heap->maximumSize;
 
     mspace_set_footprint_limit(heap->msp, max);
-    void* ptr = dvmHeapSourceAlloc(n);
+//    void* ptr = dvmHeapSourceAlloc(n);
+    void* ptr=NULL;
+    if (dvmThreadSelf()->threadId == kMainThreadId) {
+        /*
+         * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
+         * GC的情况
+         */
+        ptr = dvmHeapSourceUiThreadAlloc(n);
+    } else {
+        /*
+         *这里面是默认状态下的申请操作
+         */
+        ptr = dvmHeapSourceAlloc(n);
+    }
 
     /* Shrink back down as small as possible.  Our caller may
      * readjust max_allowed to a more appropriate value.
@@ -1037,7 +1052,21 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
 
     HeapSource *hs = gHs;
     Heap* heap = hs2heap(hs);
-    void* ptr = dvmHeapSourceAlloc(n);
+//    void* ptr = dvmHeapSourceAlloc(n);
+    void* ptr = NULL;
+    if (dvmThreadSelf()->threadId == kMainThreadId) {
+        /*
+         * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
+         * GC的情况
+         */
+        ptr = dvmHeapSourceUiThreadAlloc(n);
+    } else {
+        /*
+         *这里面是默认状态下的申请操作
+         */
+        ptr = dvmHeapSourceAlloc(n);
+    }
+
     if (ptr != NULL) {
         return ptr;
     }
@@ -1048,7 +1077,19 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
          * see if we can allocate without actually growing.
          */
         hs->softLimit = SIZE_MAX;
-        ptr = dvmHeapSourceAlloc(n);
+//        ptr = dvmHeapSourceAlloc(n);
+       if (dvmThreadSelf()->threadId == kMainThreadId) {
+            /*
+             * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
+             * GC的情况
+             */
+            ptr = dvmHeapSourceUiThreadAlloc(n);
+        } else {
+            /*
+            * 这里面是默认状态下的申请操作
+            */
+            ptr = dvmHeapSourceAlloc(n);
+        }
         if (ptr != NULL) {
             /* Removing the soft limit worked;  fix things up to
              * reflect the new effective ideal size.
