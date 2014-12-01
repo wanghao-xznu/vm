@@ -108,6 +108,10 @@ size_t dvmHeapSourceGetValue(HeapSourceValueSpec spec,
  * Allocates <n> bytes of zeroed data.
  */
 void *dvmHeapSourceAlloc(size_t n);
+
+/*
+ * 这是为了UiThread分配Heap的
+ */
 void *dvmHeapSourceUiThreadAlloc(size_t n);
 
 /*

@@ -165,6 +165,9 @@ struct HeapSource {
     //增加UiThreadHeap
     Heap UiThreadHeap;
 
+    //增加表示为isUiThread
+    bool isUiThread;
+
     /* The current number of heaps.
      */
     size_t numHeaps;
@@ -405,6 +408,7 @@ static bool addUiThreadHeap(HeapSource *hs, char *base)
     size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);//不明白，与下面相对
     size_t ui_heap_size = (hs->heaps[0].limit - hs->heaps[0].base)>>1;
     hs->heaps[0].limit = hs->heaps[0].limit - ui_heap_size;
+    hs->heaps[0].maximumSize = hs->heaps[0].maximumSize - ui_heap_size;
 //    heap.maximumSize = (hs->growthLimit-overhead)>>2;//所以heap[0]也得修改
     heap.maximumSize = ui_heap_size;//我暂时设定一个绝对的大小
 //  heap.concurrentStartBytes = hs->minFree - concurrentStart;//64K
@@ -412,7 +416,7 @@ static bool addUiThreadHeap(HeapSource *hs, char *base)
     heap.base = base;//这里面应该设置一个合适的值
     heap.limit = heap.base + ui_heap_size;
     heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
-    heap.msp = createMspace(heap.base, morecoreStart, hs->minFree);
+    heap.msp = createMspace(heap.base, morecoreStart, ui_heap_size);
 
     if (heap.msp == NULL) {
         return false;
@@ -937,6 +941,7 @@ void* dvmHeapSourceUiThreadAlloc(size_t n)
 {
     HS_BOILERPLATE();//只是执行几个断言
     HeapSource *hs = gHs;//gHs应该是一个全局变量
+    gHs->isUiThread = true;//只是一个标记，为后面判断是否为Ui线程提供方便
     Heap *heap = &hs->UiThreadHeap;
     if (heap->bytesAllocated + n > heap->maximumSize){
         return NULL;
@@ -974,6 +979,7 @@ void* dvmHeapSourceAlloc(size_t n)
     HS_BOILERPLATE();
 
     HeapSource *hs = gHs;
+    gHs->isUiThread = false;//只是一个标记是否为UiThread调用此函数，为后面局部回收方便
     Heap* heap = hs2heap(hs);
     if (heap->bytesAllocated + n > hs->softLimit) {
         /*
@@ -1052,7 +1058,13 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
     HS_BOILERPLATE();
 
     HeapSource *hs = gHs;
-    Heap* heap = hs2heap(hs);
+//    Heap* heap = hs2heap(hs);
+    Heap* heap = NULL;
+    if (dvmThreadSelf()->threadId == kMainThreadId) {
+        heap = &hs->UiThreadHeap;//增加一种判断情况
+    } else {
+        heap = hs2heap(hs);
+    }
 //    void* ptr = dvmHeapSourceAlloc(n);
     void* ptr = NULL;
     if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
@@ -1603,8 +1615,11 @@ size_t dvmHeapSourceGetNumHeaps()
 
 void *dvmHeapSourceGetImmuneLimit(bool isPartial)
 {
-    if (isPartial) {
-        return hs2heap(gHs)->base;
+    if (isPartial) {//这里面应该加一个判断，是否指向UiHeap
+        if (gHs->isUiThread == true)
+            return gHs->UiThreadHeap.base;//这里面有bug，concurrent GC不能使用
+        else
+            return hs2heap(gHs)->base;
     } else {
         return NULL;
     }
