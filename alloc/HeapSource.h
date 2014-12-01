@@ -111,6 +111,11 @@ void *dvmHeapSourceAlloc(size_t n);
 void *dvmHeapSourceUiThreadAlloc(size_t n);
 
 /*
+ * 这是为了UiThread分配Heap的
+ */
+void *dvmHeapSourceUiThreadAlloc(size_t n);
+
+/*
  * Allocates <n> bytes of zeroed data, growing up to absoluteMaxSize
  * if necessary.
  */
