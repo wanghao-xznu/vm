@@ -178,7 +178,7 @@ static void rootMarkObjectVisitor(void *addr, u4 thread, RootType type,
  * - Native stack (for in-progress stuff in the VM)
  *   - The TrackedAlloc stuff watches all native VM references.
  */
-void dvmHeapMarkRootSet()
+void dvmHeapMarkRootSet()//这就对了，这里面有一个heaps[i],一定要记得特殊处理
 {
     GcHeap *gcHeap = gDvm.gcHeap;
     dvmMarkImmuneObjects(gcHeap->markContext.immuneLimit);

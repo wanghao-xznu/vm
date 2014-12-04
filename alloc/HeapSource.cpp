@@ -907,7 +907,7 @@ void dvmHeapSourceZeroMarkBitmap()
     dvmHeapBitmapZero(&gHs->markBits);
 }
 
-void dvmMarkImmuneObjects(const char *immuneLimit)
+void dvmMarkImmuneObjects(const char *immuneLimit)//这里面也要特殊处理UiHeap情况
 {
     /*
      * Copy the contents of the live bit vector for immune object
@@ -1070,7 +1070,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
     HeapSource *hs = gHs;
 //    Heap* heap = hs2heap(hs);
     Heap* heap = NULL;
-    if (dvmThreadSelf()->threadId == kMainThreadId) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&0) {
         heap = &hs->UiThreadHeap;//增加一种判断情况
     } else {
         heap = hs2heap(hs);
