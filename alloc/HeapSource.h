@@ -108,6 +108,7 @@ size_t dvmHeapSourceGetValue(HeapSourceValueSpec spec,
  * Allocates <n> bytes of zeroed data.
  */
 void *dvmHeapSourceAlloc(size_t n);
+void *dvmHeapSourceUiThreadAlloc(size_t n);
 
 /*
  * Allocates <n> bytes of zeroed data, growing up to absoluteMaxSize

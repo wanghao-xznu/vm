@@ -166,6 +166,7 @@ struct DvmGlobals {
      */
     bool        initializing;
     bool        optimizing;
+    bool        isZygoteProcess;
 
     /*
      * java.lang.System properties set from the command line with -D.

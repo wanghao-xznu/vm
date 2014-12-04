@@ -199,7 +199,7 @@ static void *tryMalloc(size_t size)
 //    DeflateTest allocs a bunch of ~128k buffers w/in 0-5 allocs of each other
 //      (or, at least, there are only 0-5 objects swept each time)
 
-    if (dvmThreadSelf()->threadId == kMainThreadId) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -232,7 +232,7 @@ static void *tryMalloc(size_t size)
       gcForMalloc(false);
     }
 
-    if (dvmThreadSelf()->threadId == kMainThreadId) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
