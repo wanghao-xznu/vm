@@ -199,7 +199,7 @@ static void *tryMalloc(size_t size)
 //    DeflateTest allocs a bunch of ~128k buffers w/in 0-5 allocs of each other
 //      (or, at least, there are only 0-5 objects swept each time)
 
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false) && (1)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -232,7 +232,7 @@ static void *tryMalloc(size_t size)
       gcForMalloc(false);
     }
 
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(1)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -503,14 +503,14 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
     }
     if (gDvm.preVerify) {
         LOGV_HEAP("Verifying roots and heap before GC");
-        verifyRootsAndHeap();
+        verifyRootsAndHeap();//我觉得至少得指明从哪里verify的吧，所以我觉得这里有bug
     }
 
-    dvmMethodTraceGCBegin();
+    dvmMethodTraceGCBegin();//我觉得至少指明从哪里开始trace的吧，所以我觉得我这里有bug
 
     /* Set up the marking context.
      */
-    if (!dvmHeapBeginMarkStep(spec->isPartial)) {
+    if (!dvmHeapBeginMarkStep(spec->isPartial)) {//我觉得至少得指明从哪里标记的吧，所以我觉得我这里有bug
         LOGE_HEAP("dvmHeapBeginMarkStep failed; aborting");
         dvmAbort();
     }
@@ -518,7 +518,7 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
     /* Mark the set of objects that are strongly reachable from the roots.
      */
     LOGD_HEAP("Marking...");
-    dvmHeapMarkRootSet();
+    dvmHeapMarkRootSet();//我觉得至少得指明从哪里标记的吧，所以我觉得我这里有bug
 
     /* dvmHeapScanMarkedObjects() will build the lists of known
      * instances of the Reference classes.

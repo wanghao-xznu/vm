@@ -404,19 +404,24 @@ static bool addInitialHeap(HeapSource *hs, mspace msp, size_t maximumSize)
 static bool addUiThreadHeap(HeapSource *hs, char *base)
 {
     Heap heap;
+    memset(&heap, 0, sizeof(heap));
     gDvm.isZygoteProcess = false;//这个时候才可以使用，不能再Zygote阶段使用UiHeap
     size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);//不明白，与下面相对
     size_t ui_heap_size = (hs->heaps[0].limit - hs->heaps[0].base)>>1;
     hs->heaps[0].limit = hs->heaps[0].limit - ui_heap_size;
     hs->heaps[0].maximumSize = hs->heaps[0].maximumSize - ui_heap_size;
-//    heap.maximumSize = (hs->growthLimit-overhead)>>2;//所以heap[0]也得修改
     heap.maximumSize = ui_heap_size;//我暂时设定一个绝对的大小
-//  heap.concurrentStartBytes = hs->minFree - concurrentStart;//64K
-    heap.concurrentStartBytes = SIZE_MAX;//暂时不进行垃圾回收
+    heap.concurrentStartBytes = hs->minFree - concurrentStart;//64K
+//  heap.concurrentStartBytes = SIZE_MAX;//暂时不进行垃圾回收
     heap.base = base;//这里面应该设置一个合适的值
     heap.limit = heap.base + ui_heap_size;
     heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
-    heap.msp = createMspace(heap.base, morecoreStart, ui_heap_size);
+    heap.msp = createMspace(heap.base, morecoreStart, hs->minFree);
+#if 1
+        ALOGE("*****wh_log*****heap->bytesAllocAllocated = %zd  heap->maximumSize = %zdM",heap.bytesAllocated,heap.maximumSize>>20);
+        ALOGE("*****wh_log*****heap->bytesAllocAllocated = %zdk  heap->maximumSize = %zdM",heap.bytesAllocated>>10,heap.maximumSize>>20);
+        ALOGE("*****wh_log*****heap->bytesAllocAllocated = %zdM  heap->maximumSize = %zdM",heap.bytesAllocated>>20,heap.maximumSize>>20);//打印出来是一个随机值？
+#endif
 
     if (heap.msp == NULL) {
         return false;
@@ -500,6 +505,11 @@ static bool addNewHeap(HeapSource *hs)
         ALOGE("*****wh_log*****初始化UiThreadHeap失败");
         return false;
     }
+#if 1
+        ALOGE("*****wh_log*****heaps[0]->bytesAllocAllocated = %zd  heap->maximumSize = %zdM",hs->heaps[0].bytesAllocated,hs->heaps[0].maximumSize>>20);
+        ALOGE("*****wh_log*****heaps[0]->bytesAllocAllocated = %zdk  heap->maximumSize = %zdM",hs->heaps[0].bytesAllocated>>10,hs->heaps[0].maximumSize>>20);
+        ALOGE("*****wh_log*****heaps[0]->bytesAllocAllocated = %zdM  heap->maximumSize = %zdM",hs->heaps[0].bytesAllocated>>20,hs->heaps[0].maximumSize>>20);
+#endif
     return true;
 }
 
@@ -943,7 +953,7 @@ void* dvmHeapSourceUiThreadAlloc(size_t n)
     HeapSource *hs = gHs;//gHs应该是一个全局变量
     gHs->isUiThread = true;//只是一个标记，为后面判断是否为Ui线程提供方便
     Heap *heap = &hs->UiThreadHeap;
-    if (heap->bytesAllocated + n > heap->maximumSize){
+    if (heap->bytesAllocated + n > hs->softLimit) {
         return NULL;
     }
     void* ptr = mspace_calloc(heap->msp,1,n);
@@ -1028,7 +1038,7 @@ static void* heapAllocAndGrow(HeapSource *hs, Heap *heap, size_t n)
     mspace_set_footprint_limit(heap->msp, max);
 //    void* ptr = dvmHeapSourceAlloc(n);
     void* ptr=NULL;
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&0) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -1067,7 +1077,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
     }
 //    void* ptr = dvmHeapSourceAlloc(n);
     void* ptr = NULL;
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&0) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -1091,7 +1101,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
          */
         hs->softLimit = SIZE_MAX;
 //        ptr = dvmHeapSourceAlloc(n);
-       if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
+       if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&0) {
             /*
              * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
              * GC的情况
