@@ -404,6 +404,7 @@ static bool addUiThreadHeap(HeapSource *hs, char *base)
 {
         ALOGE("*****wh_log*****进入addUiThreadHeap函数");
     Heap heap;
+    gDvm.isZygoteProcess = false;//这个时候才可以使用，不能再Zygote阶段使用UiHeap
     size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);//不明白，与下面相对
     //size_t ui_heap_size = (hs->heaps[0].limit - hs->heaps[0].base)>>1;
     hs->heaps[0].limit = hs->heaps[0].limit - UI_HEAP_SIZE;
@@ -1029,7 +1030,7 @@ static void* heapAllocAndGrow(HeapSource *hs, Heap *heap, size_t n)
     mspace_set_footprint_limit(heap->msp, max);
 //    void* ptr = dvmHeapSourceAlloc(n);
     void* ptr=NULL;
-    if (dvmThreadSelf()->threadId == kMainThreadId) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -1062,7 +1063,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
     Heap* heap = hs2heap(hs);
 //    void* ptr = dvmHeapSourceAlloc(n);
     void* ptr = NULL;
-    if (dvmThreadSelf()->threadId == kMainThreadId) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -1086,7 +1087,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
          */
         hs->softLimit = SIZE_MAX;
 //        ptr = dvmHeapSourceAlloc(n);
-       if (dvmThreadSelf()->threadId == kMainThreadId) {
+       if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
             /*
              * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
              * GC的情况

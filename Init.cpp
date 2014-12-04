@@ -1385,6 +1385,7 @@ std::string dvmStartup(int argc, const char* const argv[],
     ScopedShutdown scopedShutdown;
 
     assert(gDvm.initializing);
+    gDvm.isZygoteProcess = true;//增加判断
 
     ALOGV("VM init args (%d):", argc);
     for (int i = 0; i < argc; i++) {
