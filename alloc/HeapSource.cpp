@@ -415,7 +415,7 @@ static bool addUiThreadHeap(HeapSource *hs, char *base)
 //  heap.concurrentStartBytes = SIZE_MAX;//暂时不进行垃圾回收
     heap.base = base;//这里面应该设置一个合适的值
     heap.limit = heap.base + ui_heap_size;
-    heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
+    heap.brk = heap.base + morecoreStart;//morecoreStart是什么？我觉得不能简单的使用，morecoreStart使用heaps[i]
     heap.msp = createMspace(heap.base, morecoreStart, hs->minFree);
 #if 1
         ALOGE("*****wh_log*****heap->bytesAllocAllocated = %zd  heap->maximumSize = %zdM",heap.bytesAllocated,heap.maximumSize>>20);
@@ -942,6 +942,25 @@ void dvmMarkImmuneObjects(const char *immuneLimit)//这里面也要特殊处理U
             }
         }
     }
+    //UiThreadHeap
+        if (gHs->UiThreadHeap.base < immuneLimit) {
+            assert(gHs->UiThreadHeap.limit <= immuneLimit);
+            /* Compute the number of words to copy in the bitmap. */
+            size_t index = HB_OFFSET_TO_INDEX(
+                (uintptr_t)gHs->UiThreadHeap.base - gHs->liveBits.base);
+            /* Compute the starting offset in the live and mark bits. */
+            char *src = (char *)(gHs->liveBits.bits + index);
+            char *dst = (char *)(gHs->markBits.bits + index);
+            /* Compute the number of bytes of the live bitmap to copy. */
+            size_t length = HB_OFFSET_TO_BYTE_INDEX(
+                gHs->UiThreadHeap.limit - gHs->UiThreadHeap.base);
+            /* Do the copy. */
+            memcpy(dst, src, length);
+            /* Make sure max points to the address of the highest set bit. */
+            if (gHs->markBits.max < (uintptr_t)gHs->UiThreadHeap.limit) {
+                gHs->markBits.max = (uintptr_t)gHs->UiThreadHeap.limit;
+            }
+        }
 }
 
 /*

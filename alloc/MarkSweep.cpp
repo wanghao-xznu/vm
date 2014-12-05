@@ -910,7 +910,7 @@ void dvmHeapSweepSystemWeaks()
  * Walk through the list of objects that haven't been marked and free
  * them.  Assumes the bitmaps have been swapped.
  */
-void dvmHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,
+void dvmHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,//这个已经是到了最后的清除阶段了,很显然我的代码中没有清除
                                  size_t *numObjects, size_t *numBytes)
 {
     uintptr_t base[HEAP_SOURCE_MAX_HEAP_COUNT];

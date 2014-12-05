@@ -633,7 +633,7 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
      * This doesn't actually resize any memory;
      * it just lets the heap grow more when necessary.
      */
-    dvmHeapSourceGrowForUtilization();
+    dvmHeapSourceGrowForUtilization();//根据字面意思，是调整理想状态下的heap利用率
 
     currAllocated = dvmHeapSourceGetValue(HS_BYTES_ALLOCATED, NULL, 0);
     currFootprint = dvmHeapSourceGetValue(HS_FOOTPRINT, NULL, 0);
