@@ -59,6 +59,8 @@ void dvmHeapFinishMarkStep(void);
 void dvmHeapSweepSystemWeaks(void);
 void dvmHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,
                                  size_t *numObjects, size_t *numBytes);
+void dvmUiThreadHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,
+                                    size_t *numObjects, size_t *numBytes);
 void dvmEnqueueClearedReferences(Object **references);
 
 #endif  // DALVIK_ALLOC_MARK_SWEEP_H_

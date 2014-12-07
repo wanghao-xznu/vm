@@ -199,7 +199,7 @@ static void *tryMalloc(size_t size)
 //    DeflateTest allocs a bunch of ~128k buffers w/in 0-5 allocs of each other
 //      (or, at least, there are only 0-5 objects swept each time)
 
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false) && (1)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false) && (0)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -232,7 +232,7 @@ static void *tryMalloc(size_t size)
       gcForMalloc(false);
     }
 
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(1)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(0)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -476,7 +476,7 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
     u4 gcEnd = 0;
     u4 rootStart = 0 , rootEnd = 0;
     u4 dirtyStart = 0, dirtyEnd = 0;
-    size_t numObjectsFreed, numBytesFreed;
+    size_t numObjectsFreed, numBytesFreed;//在哪里给这两个变量传参的呢？
     size_t currAllocated, currFootprint;
     size_t percentFree;
     int oldThreadPriority = INT_MAX;
@@ -534,7 +534,7 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
          * Resume threads while tracing from the roots.  We unlock the
          * heap to allow mutator threads to allocate from free space.
          */
-        dvmClearCardTable();
+        dvmClearCardTable();//清除卡表，相当于全部清0
         dvmUnlockHeap();
         dvmResumeAllThreads(SUSPEND_FOR_GC);
         rootEnd = dvmGetRelativeTimeMsec();
@@ -545,7 +545,7 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
      * objects will also be marked.
      */
     LOGD_HEAP("Recursing...");
-    dvmHeapScanMarkedObjects();
+    dvmHeapScanMarkedObjects();//fuzhou 执行完这个后，所有对象均以被标记出来
 
     if (spec->isConcurrent) {
         /*
@@ -605,11 +605,11 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
      * and live bitmaps.  The sweep can proceed concurrently viewing
      * the new live bitmap as the old mark bitmap, and vice versa.
      */
-    dvmHeapSourceSwapBitmaps();
+    dvmHeapSourceSwapBitmaps();///为什么需要交换呢？
 
     if (gDvm.postVerify) {
         LOGV_HEAP("Verifying roots and heap after GC");
-        verifyRootsAndHeap();
+        verifyRootsAndHeap();//为什么这里又调用了这个函数
     }
 
     if (spec->isConcurrent) {
@@ -617,8 +617,21 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
         dvmResumeAllThreads(SUSPEND_FOR_GC);
         dirtyEnd = dvmGetRelativeTimeMsec();
     }
-    dvmHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,
-                                &numObjectsFreed, &numBytesFreed);
+//    dvmHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,//清除未标志的对象，如果是并行GC在释放对象时暂锁定堆
+//                                &numObjectsFreed, &numBytesFreed);//在这里会调用mspace_free来真实的释放内存
+
+    if (dvmThreadSelf()->threadId == kMainThreadId) {
+
+        dvmUiThreadHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,
+                                            &numObjectsFreed, &numBytesFreed);
+    } else {
+        dvmHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,//清除未标志的对象，如果是并行GC在释放对象时暂锁定堆
+                                    &numObjectsFreed, &numBytesFreed);//在这里会调用mspace_free来真实的释放内存
+    }
+
+
+
+
     LOGD_HEAP("Cleaning up...");
     dvmHeapFinishMarkStep();
     if (spec->isConcurrent) {

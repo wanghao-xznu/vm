@@ -213,7 +213,7 @@ void dvmVisitRoots(RootVisitor *visitor, void *arg)
 {
     assert(visitor != NULL);
     visitHashTable(visitor, gDvm.loadedClasses, ROOT_STICKY_CLASS, arg);
-    visitPrimitiveTypes(visitor, arg);
+    visitPrimitiveTypes(visitor, arg);//基础数据类型
     if (gDvm.dbgRegistry != NULL) {
         visitHashTable(visitor, gDvm.dbgRegistry, ROOT_DEBUGGER, arg);
     }

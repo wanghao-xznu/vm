@@ -942,3 +942,35 @@ void dvmHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,//这个已�
         gDvm.allocProf.freeSize += ctx.numBytes;
     }
 }
+
+/*
+ * 仿照上一函数，只是清扫UiThreadHeap中的UnmarkedObject 
+ * 
+ */
+void dvmUiThreadHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,//这个已经是到了最后的清除阶段了,很显然我的代码中没有清除
+                                 size_t *numObjects, size_t *numBytes)
+{
+    uintptr_t base[1];
+    uintptr_t max[1];
+    SweepContext ctx;
+    HeapBitmap *prevLive, *prevMark;
+    size_t numHeaps, numSweepHeaps;
+
+    numHeaps = 1;
+    dvmUiThreadHeapSourceGetRegions(base, max, numHeaps);
+    numSweepHeaps = numHeaps;
+    ctx.numObjects = ctx.numBytes = 0;
+    ctx.isConcurrent = isConcurrent;
+    prevLive = dvmHeapSourceGetMarkBits();
+    prevMark = dvmHeapSourceGetLiveBits();
+    for (size_t i = 0; i < numSweepHeaps; ++i) {
+        dvmHeapBitmapSweepWalk(prevLive, prevMark, base[i], max[i],
+                               sweepBitmapCallback, &ctx);
+    }
+    *numObjects = ctx.numObjects;
+    *numBytes = ctx.numBytes;
+    if (gDvm.allocProf.enabled) {
+        gDvm.allocProf.freeCount += ctx.numObjects;
+        gDvm.allocProf.freeSize += ctx.numBytes;
+    }
+}

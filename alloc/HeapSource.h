@@ -75,6 +75,7 @@ void dvmHeapSourceShutdown(GcHeap **gcHeap);
  * to the bitmap sweeping routine.
  */
 void dvmHeapSourceGetRegions(uintptr_t *base, uintptr_t *max, size_t numHeaps);
+void dvmUiThreadHeapSourceGetRegions(uintptr_t *base, uintptr_t *max, size_t numHeaps);
 
 /*
  * Get the bitmap representing all live objects.

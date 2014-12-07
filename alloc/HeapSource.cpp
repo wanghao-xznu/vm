@@ -873,6 +873,19 @@ void dvmHeapSourceGetRegions(uintptr_t *base, uintptr_t *max, size_t numHeaps)
     }
 }
 
+void dvmUiThreadHeapSourceGetRegions(uintptr_t *base, uintptr_t *max, size_t numHeaps)
+{
+    HeapSource *hs = gHs;
+
+    HS_BOILERPLATE();
+
+    assert(numHeaps <= hs->numHeaps);
+    for (size_t i = 0; i < numHeaps; ++i) {
+        base[i] = (uintptr_t)hs->UiThreadHeap.base;
+        max[i] = MIN((uintptr_t)hs->UiThreadHeap.limit - 1, hs->markBits.max);
+    }
+}
+
 /*
  * Get the bitmap representing all live objects.
  */
