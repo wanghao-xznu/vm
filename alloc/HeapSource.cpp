@@ -262,17 +262,29 @@ static size_t oldHeapOverhead(const HeapSource *hs, bool includeActive)
  * if it could not have come from any heap.
  */
 static Heap *ptr2heap(const HeapSource *hs, const void *ptr)
-{
+{//暂时考虑这里可以直接加判断ThreadId
     const size_t numHeaps = hs->numHeaps;
 
     if (ptr != NULL) {
-        for (size_t i = 0; i < numHeaps; i++) {
-            const Heap *const heap = &hs->heaps[i];
+        if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(USE_MY_SELF)) {
+            ALOGE("=============wh_log=================我只是想在在这个回调函数中测试下=========%s",__func__);
+            ALOGE("=============wh_log=================我只是想在在这个回调函数中测试下=========%d",dvmThreadSelf()->threadId);
+                const Heap *const heap = &hs->UiThreadHeap;
 
-            if ((const char *)ptr >= heap->base && (const char *)ptr < heap->limit) {
-                return (Heap *)heap;
-            }
+                if ((const char *)ptr >= heap->base && (const char *)ptr < heap->limit) {
+                    return (Heap *)heap;
+                }
         }
+        else {
+            for (size_t i = 0; i < numHeaps; i++) {
+                const Heap *const heap = &hs->heaps[i];
+
+                if ((const char *)ptr >= heap->base && (const char *)ptr < heap->limit) {
+                    return (Heap *)heap;
+                }
+            }
+
+       }
     }
     return NULL;
 }
@@ -1070,7 +1082,7 @@ static void* heapAllocAndGrow(HeapSource *hs, Heap *heap, size_t n)
     mspace_set_footprint_limit(heap->msp, max);
 //    void* ptr = dvmHeapSourceAlloc(n);
     void* ptr=NULL;
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&0) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(USE_MY_SELF)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -1109,7 +1121,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
     }
 //    void* ptr = dvmHeapSourceAlloc(n);
     void* ptr = NULL;
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&0) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(USE_MY_SELF)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -1133,7 +1145,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
          */
         hs->softLimit = SIZE_MAX;
 //        ptr = dvmHeapSourceAlloc(n);
-       if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&0) {
+       if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(USE_MY_SELF)) {
             /*
              * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
              * GC的情况
@@ -1182,6 +1194,10 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
 size_t dvmHeapSourceFreeList(size_t numPtrs, void **ptrs)
 {
     HS_BOILERPLATE();
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(USE_MY_SELF)) {
+//        ALOGE("=============wh_log=================我只是想在在这个回调函数中测试下=========%s",__func__);
+//        ALOGE("=============wh_log=================我只是想在在这个回调函数中测试下=========%d",dvmThreadSelf()->threadId);
+    }
 
     if (numPtrs == 0) {
         return 0;
@@ -1663,6 +1679,9 @@ void *dvmHeapSourceGetImmuneLimit(bool isPartial)
         else
             return hs2heap(gHs)->base;
     } else {
-        return NULL;
+        if (gHs->isUiThread == true)
+            return gHs->UiThreadHeap.base;//我不确定这样加对不对，之前的情况如果非 isPartial 为什么直接返回NULL
+        else
+            return NULL;
     }
 }

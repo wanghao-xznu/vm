@@ -866,7 +866,7 @@ static void sweepBitmapCallback(size_t numPtrs, void **ptrs, void *arg)
     if (ctx->isConcurrent) {
         dvmLockHeap();
     }
-    ctx->numBytes += dvmHeapSourceFreeList(numPtrs, ptrs);
+    ctx->numBytes += dvmHeapSourceFreeList(numPtrs, ptrs);//这里才是真正的free,ptrs是哪里传来的参数呢？
     ctx->numObjects += numPtrs;
     if (ctx->isConcurrent) {
         dvmUnlockHeap();
@@ -933,7 +933,7 @@ void dvmHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,//这个已�
     prevMark = dvmHeapSourceGetLiveBits();
     for (size_t i = 0; i < numSweepHeaps; ++i) {
         dvmHeapBitmapSweepWalk(prevLive, prevMark, base[i], max[i],
-                               sweepBitmapCallback, &ctx);
+                               sweepBitmapCallback, &ctx);//这里才是真正的free
     }
     *numObjects = ctx.numObjects;
     *numBytes = ctx.numBytes;
@@ -964,8 +964,8 @@ void dvmUiThreadHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,//这
     prevLive = dvmHeapSourceGetMarkBits();
     prevMark = dvmHeapSourceGetLiveBits();
     for (size_t i = 0; i < numSweepHeaps; ++i) {
-        dvmHeapBitmapSweepWalk(prevLive, prevMark, base[i], max[i],
-                               sweepBitmapCallback, &ctx);
+        dvmHeapBitmapSweepWalk(prevLive, prevMark, base[i], max[i],//dvmHeapBitmapSweepWalk没有涉及
+                               sweepBitmapCallback, &ctx);//只有这个回调函数中才涉及heaps[0]，需要修改
     }
     *numObjects = ctx.numObjects;
     *numBytes = ctx.numBytes;

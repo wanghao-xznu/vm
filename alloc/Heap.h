@@ -100,3 +100,4 @@ bool dvmWaitForConcurrentGcToComplete(void);
 bool dvmIsValidObject(const Object* obj);
 
 #endif  // DALVIK_ALLOC_HEAP_H_
+#define USE_MY_SELF 1

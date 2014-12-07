@@ -199,7 +199,7 @@ static void *tryMalloc(size_t size)
 //    DeflateTest allocs a bunch of ~128k buffers w/in 0-5 allocs of each other
 //      (or, at least, there are only 0-5 objects swept each time)
 
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false) && (0)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false) && (USE_MY_SELF)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -232,7 +232,7 @@ static void *tryMalloc(size_t size)
       gcForMalloc(false);
     }
 
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(0)) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)&&(USE_MY_SELF)) {
         /*
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
@@ -506,7 +506,7 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
         verifyRootsAndHeap();//我觉得至少得指明从哪里verify的吧，所以我觉得这里有bug
     }
 
-    dvmMethodTraceGCBegin();//我觉得至少指明从哪里开始trace的吧，所以我觉得我这里有bug
+    dvmMethodTraceGCBegin();
 
     /* Set up the marking context.
      */
@@ -620,13 +620,17 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
 //    dvmHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,//清除未标志的对象，如果是并行GC在释放对象时暂锁定堆
 //                                &numObjectsFreed, &numBytesFreed);//在这里会调用mspace_free来真实的释放内存
 
-    if (dvmThreadSelf()->threadId == kMainThreadId) {
+    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false) && (USE_MY_SELF)) {
 
+//        ALOGE("======wh_log=====还没有运行UiThreadHeapUnMarkedObjects!======================= %s %d",__func__,__LINE__);
         dvmUiThreadHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,
                                             &numObjectsFreed, &numBytesFreed);
+//        ALOGE("======wh_log=====已经运行完UiThreadHeapUnMarkedObjects!======================= %s %d",__func__,__LINE__);
     } else {
+//        ALOGE("======wh_log=====还没有运行UnMarkedObjects! %s %d",__func__,__LINE__);
         dvmHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,//清除未标志的对象，如果是并行GC在释放对象时暂锁定堆
                                     &numObjectsFreed, &numBytesFreed);//在这里会调用mspace_free来真实的释放内存
+//        ALOGE("======wh_log=====已经运行完UnMarkedObjects! %s %d",__func__,__LINE__);
     }
 
 
