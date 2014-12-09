@@ -404,6 +404,7 @@ static bool addUiThreadHeap(HeapSource *hs, char *base)
 {
         ALOGE("*****wh_log*****进入addUiThreadHeap函数");
     Heap heap;
+    memset(&heap, 0, sizeof(heap));
     gDvm.isZygoteProcess = false;//这个时候才可以使用，不能再Zygote阶段使用UiHeap
     size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);//不明白，与下面相对
     //size_t ui_heap_size = (hs->heaps[0].limit - hs->heaps[0].base)>>1;
@@ -945,6 +946,22 @@ void* dvmHeapSourceUiThreadAlloc(size_t n)
 {
     HS_BOILERPLATE();//只是执行几个断言
     HeapSource *hs = gHs;//gHs应该是一个全局变量
+#if 0
+        ALOGE("*****************************************************************************************************");
+        ALOGE("======wh_log============================ %s %d",__func__,__LINE__);
+        ALOGE("======wh_log======================hs->msp = %p",hs->UiThreadHeap.msp);
+        ALOGE("======wh_log======================hs->maximumSize = %zdM",hs->UiThreadHeap.maximumSize>>20);
+        ALOGE("======wh_log======================hs->bytesAllocated = %zd",hs->UiThreadHeap.bytesAllocated);
+        ALOGE("======wh_log======================hs->bytesAllocated = %zdK",hs->UiThreadHeap.bytesAllocated>>10);
+        ALOGE("======wh_log======================hs->bytesAllocated = %zdM",hs->UiThreadHeap.bytesAllocated>>20);
+        ALOGE("======wh_log======================hs->concurrentStartBytes = %zd",hs->UiThreadHeap.concurrentStartBytes);
+        ALOGE("======wh_log======================hs->concurrentStartBytes = %d",hs->UiThreadHeap.concurrentStartBytes);
+        ALOGE("======wh_log======================hs->objectsAlloced = %d",hs->UiThreadHeap.objectsAllocated);
+        ALOGE("======wh_log======================hs->base = %p",hs->UiThreadHeap.base);
+        ALOGE("======wh_log======================hs->limit = %p",hs->UiThreadHeap.limit);
+        ALOGE("======wh_log======================hs->brk = %p",hs->UiThreadHeap.brk);
+        ALOGE("*****************************************************************************************************");
+#endif
     Heap *heap = &hs->UiThreadHeap;
     if (heap->bytesAllocated + n > heap->maximumSize){
         return NULL;
