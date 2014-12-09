@@ -314,6 +314,8 @@ static HeapSource *gHs = NULL;
 
 static mspace createMspace(void* begin, size_t morecoreStart, size_t startingSize)
 {
+//        ALOGE("*****wh_log*****进入%s,morecoreStart = %zd,startingSize = %zd",__func__,morecoreStart,startingSize>>20);
+//        ALOGE("*****wh_log*****进入%s,morecoreStart = %zd,startingSize = %zd",__func__,morecoreStart>>20,startingSize>>20);
     // Clear errno to allow strerror on error.
     errno = 0;
     // Allow access to inital pages that will hold mspace.
@@ -398,16 +400,18 @@ static bool addInitialHeap(HeapSource *hs, mspace msp, size_t maximumSize)
                                        //我觉得这里可能不能设置绝对大小，每次dalvik启动设置的值不一样
 static bool addUiThreadHeap(HeapSource *hs, char *base)
 {
+        ALOGE("*****wh_log*****进入addUiThreadHeap函数");
     Heap heap;
     size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);//不明白，与下面相对
-    size_t ui_heap_size = (hs->heaps[0].limit - hs->heaps[0].base)>>1;
-    hs->heaps[0].limit = hs->heaps[0].limit - ui_heap_size;
+    //size_t ui_heap_size = (hs->heaps[0].limit - hs->heaps[0].base)>>1;
+    hs->heaps[0].limit = hs->heaps[0].limit - UI_HEAP_SIZE;
+    hs->heaps[0].maximumSize = hs->heaps[0].maximumSize - UI_HEAP_SIZE;
 //    heap.maximumSize = (hs->growthLimit-overhead)>>2;//所以heap[0]也得修改
-    heap.maximumSize = ui_heap_size;//我暂时设定一个绝对的大小
+    heap.maximumSize = UI_HEAP_SIZE;//我暂时设定一个绝对的大小
 //  heap.concurrentStartBytes = hs->minFree - concurrentStart;//64K
     heap.concurrentStartBytes = SIZE_MAX;//暂时不进行垃圾回收
-    heap.base = base;//这里面应该设置一个合适的值
-    heap.limit = heap.base + ui_heap_size;
+    heap.base = base - UI_HEAP_SIZE;//这里面应该设置一个合适的值
+    heap.limit = heap.base + UI_HEAP_SIZE;
     heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
     heap.msp = createMspace(heap.base, morecoreStart, hs->minFree);
 
@@ -443,6 +447,7 @@ static bool addNewHeap(HeapSource *hs)
      */
     char *base = hs->heaps[0].brk;
     size_t overhead = base - hs->heaps[0].base;
+//    ALOGE("==============wh_log==============%s,%d,overheap = %zd",__func__,__LINE__,overhead>>20);
     assert(((size_t)hs->heaps[0].base & (SYSTEM_PAGE_SIZE - 1)) == 0);
 
     if (overhead + hs->minFree >= hs->maximumSize) {
@@ -463,6 +468,8 @@ static bool addNewHeap(HeapSource *hs)
     else {
         size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);
         heap.maximumSize = hs->growthLimit - overhead;
+//    ALOGE("==============wh_log==============%s,%d,heap.maxumumSize = %zdk",__func__,__LINE__,heap.maximumSize>>10);
+//    ALOGE("==============wh_log==============%s,%d,heap.maxumumSize = %zdm",__func__,__LINE__,heap.maximumSize>>20);
         heap.concurrentStartBytes = hs->minFree - concurrentStart;
         heap.base = base;
         heap.limit = heap.base + heap.maximumSize;
@@ -475,9 +482,10 @@ static bool addNewHeap(HeapSource *hs)
 
     /* Don't let the soon-to-be-old heap grow any further.
      */
+//    ALOGE("==============wh_log==============%s,%d,overheap = %zd",__func__,__LINE__,overhead>>20);
     hs->heaps[0].maximumSize = overhead;
     hs->heaps[0].limit = base;
-    mspace_set_footprint_limit(hs->heaps[0].msp, overhead);
+    mspace_set_footprint_limit(hs->heaps[0].msp, overhead);//相当于重新设置了zygote堆的limit
 
     /* Put the new heap in the list, at heaps[0].
      * Shift existing heaps down.
