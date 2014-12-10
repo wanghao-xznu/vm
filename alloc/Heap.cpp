@@ -199,18 +199,19 @@ static void *tryMalloc(size_t size)
 //    DeflateTest allocs a bunch of ~128k buffers w/in 0-5 allocs of each other
 //      (or, at least, there are only 0-5 objects swept each time)
 
-    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
-        /*
-         * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
-         * GC的情况
-         */
-        ptr = dvmHeapSourceUiThreadAlloc(size);
-    } else {
-        /*
-         *这里面是默认状态下的申请操作
-         */
+//    if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
+//        /*
+//         * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
+//         * GC的情况
+//         */
+//        ptr = dvmHeapSourceUiThreadAlloc(size);
+//    } else {
+//        /*
+//         *这里面是默认状态下的申请操作
+//         */
+//        ptr = dvmHeapSourceAlloc(size);
+//    }
         ptr = dvmHeapSourceAlloc(size);
-    }
     if (ptr != NULL) {
         return ptr;
     }
@@ -226,10 +227,18 @@ static void *tryMalloc(size_t size)
          */
         dvmWaitForConcurrentGcToComplete();
     } else {
-      /*
-       * Try a foreground GC since a concurrent GC is not currently running.
-       */
-      gcForMalloc(false);
+        if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
+            /*
+             * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
+             * GC的情况
+             */
+            ptr = dvmHeapSourceUiThreadAlloc(size);
+        } else {
+            /*
+             * Try a foreground GC since a concurrent GC is not currently running.
+             */
+          gcForMalloc(false);
+        }
     }
 
     if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
@@ -237,6 +246,7 @@ static void *tryMalloc(size_t size)
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
          */
+        //这种情况应该很少出现，暂时先不考虑
         ptr = dvmHeapSourceUiThreadAlloc(size);
     } else {
         /*
