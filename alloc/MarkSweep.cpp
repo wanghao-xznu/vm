@@ -911,7 +911,7 @@ void dvmHeapSweepSystemWeaks()
  * them.  Assumes the bitmaps have been swapped.
  */
 void dvmHeapSweepUnmarkedObjects(bool isPartial, bool isConcurrent,
-                                 size_t *numObjects, size_t *numBytes)
+                                 size_t *numObjects, size_t *numBytes)//我在想，heap[0]增长了，会不会冲掉,但是为什么不kMainThreadId=3不冲掉？
 {
     uintptr_t base[HEAP_SOURCE_MAX_HEAP_COUNT];
     uintptr_t max[HEAP_SOURCE_MAX_HEAP_COUNT];

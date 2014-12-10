@@ -473,12 +473,12 @@ static void verifyRootsAndHeap()
 void dvmCollectGarbageInternal(const GcSpec* spec)
 {
     if ((dvmThreadSelf()->threadId == kMainThreadId) && (gDvm.isZygoteProcess == false)) {
-        ALOGE("======wh_log==========================GC_REASON%s = == %s %d",spec->reason,__func__,__LINE__);
-        ALOGE("======wh_log==========================GC_REASON%s = == %s %d",spec->reason,__func__,__LINE__);
-        ALOGE("======wh_log==========================GC_REASON%s = == %s %d",spec->reason,__func__,__LINE__);
-        ALOGE("======wh_log==========================GC_REASON%s = == %s %d",spec->reason,__func__,__LINE__);
-        ALOGE("======wh_log==========================GC_REASON%s = == %s %d",spec->reason,__func__,__LINE__);
-        ALOGE("======wh_log==========================GC_REASON%s = == %s %d",spec->reason,__func__,__LINE__);
+        ALOGE("======wh_log==========================GC_REASON = %s = == %s %d",spec->reason,__func__,__LINE__);
+        ALOGE("======wh_log==========================GC_REASON = %s = == %s %d",spec->reason,__func__,__LINE__);
+        ALOGE("======wh_log==========================GC_REASON = %s = == %s %d",spec->reason,__func__,__LINE__);
+        ALOGE("======wh_log==========================GC_REASON = %s = == %s %d",spec->reason,__func__,__LINE__);
+        ALOGE("======wh_log==========================GC_REASON = %s = == %s %d",spec->reason,__func__,__LINE__);
+        ALOGE("======wh_log==========================GC_REASON = %s = == %s %d",spec->reason,__func__,__LINE__);
     }
     GcHeap *gcHeap = gDvm.gcHeap;
     u4 gcEnd = 0;
@@ -625,6 +625,7 @@ void dvmCollectGarbageInternal(const GcSpec* spec)
         dvmResumeAllThreads(SUSPEND_FOR_GC);
         dirtyEnd = dvmGetRelativeTimeMsec();
     }
+    //为什么是死在在这个好函数啊？
     dvmHeapSweepUnmarkedObjects(spec->isPartial, spec->isConcurrent,
                                 &numObjectsFreed, &numBytesFreed);
     LOGD_HEAP("Cleaning up...");

@@ -284,7 +284,7 @@ static Heap *ptr2heap(const HeapSource *hs, const void *ptr)
  */
 static void countAllocation(Heap *heap, const void *ptr)
 {
-    assert(heap->bytesAllocated < mspace_footprint(heap->msp));
+    assert(heap->bytesAllocated < mspace_footprint(heap->msp));//在这里打印mapace_footprint
 
     heap->bytesAllocated += mspace_usable_size(ptr) +
             HEAP_SOURCE_CHUNK_OVERHEAD;
@@ -392,6 +392,7 @@ static bool addInitialHeap(HeapSource *hs, mspace msp, size_t maximumSize)
     hs->heaps[0].limit = hs->heapBase + maximumSize;
     hs->heaps[0].brk = hs->heapBase + kInitialMorecoreStart;
     hs->numHeaps = 1;
+            ALOGE("==============wh_log=========msp = %p,%s,%d",hs->heaps[0].msp,__func__,__LINE__);
     return true;
 }
 /*
@@ -402,7 +403,6 @@ static bool addInitialHeap(HeapSource *hs, mspace msp, size_t maximumSize)
                                        //我觉得这里可能不能设置绝对大小，每次dalvik启动设置的值不一样
 static bool addUiThreadHeap(HeapSource *hs, char *base)
 {
-        ALOGE("*****wh_log*****进入addUiThreadHeap函数");
     Heap heap;
     memset(&heap, 0, sizeof(heap));
     gDvm.isZygoteProcess = false;//这个时候才可以使用，不能再Zygote阶段使用UiHeap
@@ -416,8 +416,10 @@ static bool addUiThreadHeap(HeapSource *hs, char *base)
     heap.concurrentStartBytes = SIZE_MAX;//暂时不进行垃圾回收
     heap.base = base - UI_HEAP_SIZE;//这里面应该设置一个合适的值
     heap.limit = heap.base + UI_HEAP_SIZE;
-    heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
-    heap.msp = createMspace(heap.base, morecoreStart, hs->minFree);
+//    heap.brk = heap.base + morecoreStart;//morecoreStart是什么？
+    heap.brk = heap.base + UI_HEAP_SIZE;//morecoreStart是什么？
+    heap.msp = createMspace(heap.base, morecoreStart>>2, hs->minFree);
+            ALOGE("==============wh_log=========msp = %p,%s,%d",heap.msp,__func__,__LINE__);
 
     if (heap.msp == NULL) {
         return false;
@@ -451,7 +453,6 @@ static bool addNewHeap(HeapSource *hs)
      */
     char *base = hs->heaps[0].brk;
     size_t overhead = base - hs->heaps[0].base;
-//    ALOGE("==============wh_log==============%s,%d,overheap = %zd",__func__,__LINE__,overhead>>20);
     assert(((size_t)hs->heaps[0].base & (SYSTEM_PAGE_SIZE - 1)) == 0);
 
     if (overhead + hs->minFree >= hs->maximumSize) {
@@ -464,6 +465,7 @@ static bool addNewHeap(HeapSource *hs)
     if(lowmem) {
         heap.maximumSize = hs->growthLimit - overhead;
         heap.concurrentStartBytes = HEAP_MIN_FREE - concurrentStart;
+//        heap.concurrentStartBytes = SIZE_MAX;
         heap.base = base;
         heap.limit = heap.base + heap.maximumSize;
         heap.brk = heap.base + HEAP_MIN_FREE;
@@ -472,13 +474,13 @@ static bool addNewHeap(HeapSource *hs)
     else {
         size_t morecoreStart = MAX(SYSTEM_PAGE_SIZE, gDvm.heapStartingSize);
         heap.maximumSize = hs->growthLimit - overhead;
-//    ALOGE("==============wh_log==============%s,%d,heap.maxumumSize = %zdk",__func__,__LINE__,heap.maximumSize>>10);
-//    ALOGE("==============wh_log==============%s,%d,heap.maxumumSize = %zdm",__func__,__LINE__,heap.maximumSize>>20);
         heap.concurrentStartBytes = hs->minFree - concurrentStart;
+//        heap.concurrentStartBytes = SIZE_MAX;
         heap.base = base;
         heap.limit = heap.base + heap.maximumSize;
         heap.brk = heap.base + morecoreStart;
         heap.msp = createMspace(base, morecoreStart, hs->minFree);//可能这里面需要减去UiThreadHeap的大小
+            ALOGE("==============wh_log=========msp = %p,%s,%d",heap.msp,__func__,__LINE__);
     }
     if (heap.msp == NULL) {
         return false;
@@ -486,7 +488,6 @@ static bool addNewHeap(HeapSource *hs)
 
     /* Don't let the soon-to-be-old heap grow any further.
      */
-//    ALOGE("==============wh_log==============%s,%d,overheap = %zd",__func__,__LINE__,overhead>>20);
     hs->heaps[0].maximumSize = overhead;
     hs->heaps[0].limit = base;
     mspace_set_footprint_limit(hs->heaps[0].msp, overhead);//相当于重新设置了zygote堆的limit
@@ -1063,8 +1064,10 @@ static void* heapAllocAndGrow(HeapSource *hs, Heap *heap, size_t n)
     /* Shrink back down as small as possible.  Our caller may
      * readjust max_allowed to a more appropriate value.
      */
+        ALOGE("======wh_log============================ %s %d",__func__,__LINE__);
     mspace_set_footprint_limit(heap->msp,
                                mspace_footprint(heap->msp));
+        ALOGE("======wh_log============================ %s %d",__func__,__LINE__);
     return ptr;
 }
 
@@ -1085,6 +1088,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
          * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
          * GC的情况
          */
+        ALOGE("======wh_log============================ %s %d",__func__,__LINE__);
         ptr = dvmHeapSourceUiThreadAlloc(n);
     } else {
         /*
@@ -1109,6 +1113,7 @@ void* dvmHeapSourceAllocAndGrow(size_t n)
              * 使用我自定义的针对Ui线程的分配内存操作，目前没考虑concurrent
              * GC的情况
              */
+        ALOGE("======wh_log============================ %s %d",__func__,__LINE__);
             ptr = dvmHeapSourceUiThreadAlloc(n);
         } else {
             /*
@@ -1177,6 +1182,7 @@ size_t dvmHeapSourceFreeList(size_t numPtrs, void **ptrs)
             }
             // Bulk free ptrs.
             mspace_bulk_free(msp, ptrs, numPtrs);
+            ALOGE("==============wh_log=========msp = %p,%s,%d",msp,__func__,__LINE__);
         } else {
             // This is not an 'active heap'. Only do the accounting.
             for (size_t i = 0; i < numPtrs; i++) {
