@@ -392,7 +392,6 @@ static bool addInitialHeap(HeapSource *hs, mspace msp, size_t maximumSize)
     hs->heaps[0].limit = hs->heapBase + maximumSize;
     hs->heaps[0].brk = hs->heapBase + kInitialMorecoreStart;
     hs->numHeaps = 1;
-            ALOGE("==============wh_log=========msp = %p,%s,%d",hs->heaps[0].msp,__func__,__LINE__);
     return true;
 }
 /*
@@ -452,6 +451,8 @@ static bool addNewHeap(HeapSource *hs)
      * The new heap will start on the page after the old heap.
      */
     char *base = hs->heaps[0].brk;
+    size_t temp_ui = (hs->growthLimit)/4;
+    base = base + temp_ui;
     size_t overhead = base - hs->heaps[0].base;
     assert(((size_t)hs->heaps[0].base & (SYSTEM_PAGE_SIZE - 1)) == 0);
 
